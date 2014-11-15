@@ -1,43 +1,55 @@
 
 #include <iostream>
-#include <cstdlib>
+#include <chrono>
 #include <SDL.h>
+
+#include "Game.h"
 
 
 int main(int argc, char* argv[])
 {
-    if(SDL_Init(SDL_INIT_EVERYTHING) != 0)
-    {
-        std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Window *win = SDL_CreateWindow("Hello World!", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
-    if(win == nullptr)
-    {
-        std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_PRESENTVSYNC);
-    if(ren == nullptr)
-    {
-        SDL_DestroyWindow(win);
-        std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return 1;
-    }
-    SDL_Rect rect = {100, 100, 100, 100};
-    SDL_Rect rect2 = {100, 150, 100, 100};
-    SDL_SetRenderDrawBlendMode(ren, SDL_BlendMode::SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(ren, 0, 0, 255, 255);
-    SDL_RenderFillRect(ren, &rect2);
-    SDL_SetRenderDrawColor(ren, 255, 0, 255, 0x77);
-    SDL_RenderFillRect(ren, &rect);
-    SDL_RenderPresent(ren);
+    Game game;
+    SDL_Event event;
     
-    system("pause");
+    {
+        using namespace std::chrono;
+        typedef high_resolution_clock HRClock;
+        auto lastTime = HRClock::now();
+        auto timer = lastTime;
+        const double ns = 1000000000.0 / 60.0;
+        double delta = 0;
+        int frames = 0;
+        int ticks = 0;
+        while(game.isRunning())
+        {
+            auto now = HRClock::now();
+            delta += duration_cast<nanoseconds>(now - lastTime).count() / ns;
+            lastTime = now;
+            
+            while(SDL_PollEvent(&event))
+            {
+                game.handleEvent(event);
+            }
+
+            while(delta >= 1)
+            {
+                game.tick();
+                ticks++;
+                delta--;
+            }
+            game.draw();
+            frames++;
+
+            if(duration_cast<milliseconds>(HRClock::now() - timer).count() > 1000)
+            {
+                timer += milliseconds{1000};
+
+                //game.SetFramesPerSecond(frames);
+                //game.setTicksPerSecond(ticks);
+                ticks = 0;
+                frames = 0;
+            }
+        }
+    }
     return 0;
 }
